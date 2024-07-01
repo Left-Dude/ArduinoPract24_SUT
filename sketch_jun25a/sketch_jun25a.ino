@@ -22,11 +22,11 @@ void datMQ3() {
   { 
     Serial.println("Air-Quality: CO perfect"); 
   } 
-  else if ((MQ3sensorValue > 200) || (MQ3sensorValue <= 800)) // || = or 
+  else if ((MQ3sensorValue <= 800))
   { 
     Serial.println("Air-Quality: CO normal"); 
   } 
-  else if ((MQ3sensorValue > 800) || (MQ3sensorValue <= 1800)) 
+  else if ((MQ3sensorValue <= 1800)) 
   { 
     Serial.println("Air-Quality: CO high"); 
   } 
