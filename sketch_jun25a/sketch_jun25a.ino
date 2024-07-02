@@ -1,4 +1,5 @@
 #include "DHT.h"
+#include "TroykaMQ.h"
 
 // #include "Bonezegei_DHT11.h"
 #define DHTPIN 2 // номер пина, к которому подсоединен датчик
@@ -47,26 +48,45 @@ void datDHT() {
   float t = dht.readTemperature();
 
   // Проверка удачно прошло ли считывание.
-
+  
   if (isnan(h) || isnan(t)) {
-
-  Serial.println("Не удается считать показания");
+  //Serial.println("Не удается считать показания ");
+  datIKD();
 
   return;
-
   }
-
+  Serial.println("Датчик влажности");
   Serial.print("Влажность: "); Serial.print(h); Serial.print(" %\t"); Serial.print("Температура: "); Serial.print(t); Serial.print(" *C\n");
 }
 
 void datIKD(){
   int v;
   v = digitalRead( DHTPIN );
+  Serial.println("Данные от Инфракрасный датчик:");
   Serial.println(v); 
 }
 
-void setup() {
+/*
+void checkDetector(){
+  if (){
 
+  }
+  
+
+  float h2 = dht.readHumidity();
+  float t2 = dht.readTemperature();
+  // Проверка удачно прошло ли считывание.
+  if (!(isnan(h) || isnan(t))) {
+    datDHT();
+  }
+
+  if (){
+
+  }
+}*/
+
+void setup() {
+pinMode(popin, INPUT);
 analogWrite(popin, HIGH);
 Serial.begin(9600);
 dht.begin();
@@ -74,6 +94,14 @@ dht.begin();
 }
 
 void loop() {
+
+  //float h = dht.readHumidity();
+  //float t = dht.readTemperature();
+
+  // Проверка удачно прошло ли считывание.
+
+  //if (isnan(h) || isnan(t)) {}
+
 
 // Задержка 2 секунды между измерениями
   //datMQ3();
