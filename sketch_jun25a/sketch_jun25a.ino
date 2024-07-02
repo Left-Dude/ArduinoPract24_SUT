@@ -19,21 +19,29 @@ int MQ3sensorValue = 0;  // value read from the sensor
 void datMQ3() {
   MQ3sensorValue = analogRead(popin);
   Serial.println(MQ3sensorValue);
-  // interpretation
-  // Detecting range: 20ppm-2000ppm carbon monoxide
-  // air quality-cases: < 200 perfect, 200 - 800 normal, > 800 - 1800 high, > 1800 abnormal
-  if (MQ3sensorValue <= 200) {
-    Serial.println("Air-Quality: CO perfect");
-  } else if ((MQ3sensorValue > 200) || (MQ3sensorValue <= 800))  // || = or
-  {
-    Serial.println("Air-Quality: CO normal");
-  } else if ((MQ3sensorValue > 800) || (MQ3sensorValue <= 1800)) {
-    Serial.println("Air-Quality: CO high");
-  } else if (MQ3sensorValue > 1800) {
-    Serial.println("Air-Quality: ALARM CO very high");
-  } else {
-    Serial.println("MQ-3 - cant read any value - check the sensor!");
-  }
+  // interpretation 
+   // Detecting range: 20ppm-2000ppm carbon monoxide 
+   // air quality-cases: < 200 perfect, 200 - 800 normal, > 800 - 1800 high, > 1800 abnormal 
+  if (MQ3sensorValue <= 200)  
+  { 
+    Serial.println("Air-Quality: CO perfect"); 
+  } 
+  else if ((MQ3sensorValue <= 800))
+  { 
+    Serial.println("Air-Quality: CO normal"); 
+  } 
+  else if ((MQ3sensorValue <= 1800)) 
+  { 
+    Serial.println("Air-Quality: CO high"); 
+  } 
+  else if (MQ3sensorValue > 1800)  
+  { 
+    Serial.println("Air-Quality: ALARM CO very high");  
+  } 
+  else 
+  { 
+    Serial.println("MQ-3 - cant read any value - check the sensor!"); 
+  }  
 }
 
 
