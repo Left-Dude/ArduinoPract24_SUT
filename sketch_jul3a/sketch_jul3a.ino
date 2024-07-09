@@ -47,11 +47,13 @@ void loop() {
 
   analogExchange();
   serializeJson(doc, Serial);
+  Serial.println((char)0x0A);
   delay(20000);  // Увеличен до 2000 мс для удобства чтения данных
 }
 
 void analogExchange() {
   int sensorValue = analogRead(MQ135_PIN);
+  doc["sensorValue"] = sensorValue;
   float voltage = sensorValue * (5.0 / 1023.0);
   doc["voltage"] = voltage;
   float concentration = polynomialCalibration(voltage, a0, a1, a2);
