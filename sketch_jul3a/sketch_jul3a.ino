@@ -1,4 +1,5 @@
 #include "DHT.h"
+#include "ArduinoJson.h"
 
 #define MQ135_PIN A0  // Аналоговый пин для датчика MQ-135
 #define DHTPIN 2 // номер пина, к которому подсоединен датчик
@@ -7,6 +8,8 @@ float a0, a1, a2;
 
 String sensorType;
 String unit;
+
+JsonDocument doc;
 
 DHT dht(DHTPIN, DHT11);
 
@@ -21,8 +24,8 @@ void setup() {
   pinMode(DHTPIN, OUTPUT);
   dht.begin();
 
-  sensorType = getInput("Введите тип датчика:");
-  unit = getInput("Выберите единицы измерения для датчика:");
+  doc["sensor"] = sensorType = getInput("Введите тип датчика:");
+  doc["unit"] = unit = getInput("Выберите единицы измерения для датчика:");
 
   EnterPolinom();
 
@@ -43,14 +46,16 @@ void setup() {
 void loop() {
 
   analogExchange();
+  serializeJson(doc, Serial);
   delay(20000);  // Увеличен до 2000 мс для удобства чтения данных
 }
 
 void analogExchange() {
   int sensorValue = analogRead(MQ135_PIN);
   float voltage = sensorValue * (5.0 / 1023.0);
-
+  doc["voltage"] = voltage;
   float concentration = polynomialCalibration(voltage, a0, a1, a2);
+  doc["concentration"] = concentration;
 
   Serial.print("Напряжение: ");
   Serial.print(voltage);
