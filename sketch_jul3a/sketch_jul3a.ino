@@ -1,17 +1,15 @@
-#include "DHT.h"
 #include "ArduinoJson.h"
 
-#define MQ135_PIN A0  // Аналоговый пин для датчика MQ-135
+#define ANALOGPIN A0  // Аналоговый пин для датчика MQ-135
 #define DHTPIN 2 // номер пина, к которому подсоединен датчик
 
 float a0, a1, a2;
+float A, B, C;
 
 String sensorType;
 String unit;
 
 JsonDocument doc;
-
-DHT dht(DHTPIN, DHT11);
 
 // Градуировочная характеристика
 const int numPoints = 10;
@@ -20,9 +18,7 @@ float calibrationConcentrations[numPoints];
 
 void setup() {
   Serial.begin(9600);
-  pinMode(MQ135_PIN, INPUT);
-  pinMode(DHTPIN, OUTPUT);
-  dht.begin();
+  pinMode(ANALOGPIN, INPUT);
 
   doc["sensor"] = sensorType = getInput("Введите тип датчика:");
   doc["unit"] = unit = getInput("Выберите единицы измерения для датчика:");
@@ -32,44 +28,129 @@ void setup() {
   // Заполнение градуировочной характеристики
   generateCalibrationCurve();
 
+
   Serial.println("Настройка завершена.");
   Serial.print("Тип датчика: ");
   Serial.println(sensorType);
   Serial.print("Единицы измерения: ");
   Serial.println(unit);
 
-  // Вывод коэффициентов
-
-  calcUnits();
+  // Коллибровка. Получение коэффициентов
+  calcUnits(calibrationVoltages, calibrationConcentrations);
 }
 
 void loop() {
-
   analogExchange();
+
   serializeJson(doc, Serial);
   Serial.println((char)0x0A);
-  delay(20000);  // Увеличен до 2000 мс для удобства чтения данных
+  delay(10000);  // Увеличен до 2000 мс для удобства чтения данных
+}
+
+float polynomialCalibration(float x, float a0, float a1, float a2) {
+  return a0 + a1 * x + a2 * x * x;
 }
 
 void analogExchange() {
-  int sensorValue = analogRead(MQ135_PIN);
+  int sensorValue = analogRead(ANALOGPIN);
   doc["sensorValue"] = sensorValue;
+
   float voltage = sensorValue * (5.0 / 1023.0);
   doc["voltage"] = voltage;
-  float concentration = polynomialCalibration(voltage, a0, a1, a2);
-  doc["concentration"] = concentration;
+
+  float concentration1 = polynomialCalibration(voltage, a0, a1, a2);
+  doc["concentration1"] = concentration1;
+
+  float concentration2 = polynomialCalibration(voltage, a0, a1, a2);
 
   Serial.print("Напряжение: ");
   Serial.print(voltage);
   Serial.print(" V\t");
   Serial.print("Концентрация: ");
-  Serial.print(concentration);
+  Serial.print(concentration1);
+  Serial.print(" ");
+  Serial.println(unit);
+
+  Serial.print("Новая Концентрация: ");
+  Serial.print(concentration2);
   Serial.print(" ");
   Serial.println(unit);
 }
 
-float polynomialCalibration(float x, float a0, float a1, float a2) {
-  return a0 + a1 * x + a2 * x * x;
+
+void generateCalibrationCurve() {
+  Serial.println("Градуировочная характеристика:");
+
+  for (int i = 0; i < numPoints; i++) {
+    calibrationVoltages[i] = i * (5.0 / (numPoints - 1)); // Разделение диапазона 0-5V на равные части
+    calibrationConcentrations[i] = polynomialCalibration(calibrationVoltages[i], a0, a1, a2);
+    Serial.print("Напряжение: ");
+    Serial.print(calibrationVoltages[i]);
+    Serial.print(" V -> Концентрация: ");
+    Serial.print(calibrationConcentrations[i]);
+    Serial.print(" ");
+    Serial.println(unit);
+  }
+}
+
+void calcUnits(float *_calibrationVoltages, float *_calibrationConcentrations) {
+  int random_value_1 = random(0,10);
+  int random_value_2 = random(0,10);
+  int random_value_3 = random(0,10); 
+
+  float x1 = _calibrationVoltages[random_value_1];
+  float y1 = _calibrationConcentrations[random_value_1];
+  float x2 = _calibrationVoltages[random_value_2];
+  float y2 = _calibrationConcentrations[random_value_2];
+  float x3 = _calibrationVoltages[random_value_3];
+  float y3 = _calibrationConcentrations[random_value_3];
+
+  // Вычисление коэффициентов A, B и C для квадратичной функции y = Ax^2 + Bx + C
+  float matrix[3][4] = {
+    {x1 * x1, x1, 1, y1},
+    {x2 * x2, x2, 1, y2},
+    {x3 * x3, x3, 1, y3}
+  };
+
+  // Прямой ход метода Гаусса
+  for (int i = 0; i < 3; i++) {
+    // Нормализация строки
+    float factor = matrix[i][i];
+    for (int j = 0; j < 4; j++) {
+      matrix[i][j] /= factor;
+    }
+
+    // Обнуление столбца
+    for (int k = i + 1; k < 3; k++) {
+      factor = matrix[k][i];
+      for (int j = 0; j < 4; j++) {
+        matrix[k][j] -= factor * matrix[i][j];
+      }
+    }
+  }
+
+  // Обратный ход метода Гаусса
+  for (int i = 2; i >= 0; i--) {
+    for (int k = i - 1; k >= 0; k--) {
+      float factor = matrix[k][i];
+      for (int j = 0; j < 4; j++) {
+        matrix[k][j] -= factor * matrix[i][j];
+      }
+    }
+  }
+
+  // Решение системы
+  float A = matrix[0][3];
+  float B = matrix[1][3];
+  float C = matrix[2][3];
+
+  Serial.println("Полученные коэффициенты:");
+  Serial.print("A = ");
+  Serial.println(A);
+  Serial.print("B = ");
+  Serial.println(B);
+  Serial.print("C = ");
+  Serial.println(C);
 }
 
 void EnterPolinom() {
@@ -88,63 +169,4 @@ float getFloatInput(String prompt) {
   Serial.println(prompt);
   while (!Serial.available()) {}
   return Serial.parseFloat();
-}
-
-void generateCalibrationCurve() {
-  Serial.println("Градуировочная характеристика:");
-
-  for (int i = 0; i < numPoints; i++) {
-    calibrationVoltages[i] = i * (5.0 / (numPoints - 1)); // Разделение диапазона 0-5V на равные части
-    calibrationConcentrations[i] = polynomialCalibration(calibrationVoltages[i], a0, a1, a2);
-    Serial.print("Напряжение: ");
-    Serial.print(calibrationVoltages[i]);
-    Serial.print(" V -> Концентрация: ");
-    Serial.print(calibrationConcentrations[i]);
-    Serial.print(" ");
-    Serial.println(unit);
-  }
-}
-
-void calcUnits() {
-  float x1 = calibrationVoltages[1];
-  float x2 = calibrationVoltages[4];
-  float x3 = calibrationVoltages[9];
-  float y1 = calibrationConcentrations[1];
-  float y2 = calibrationConcentrations[4];
-  float y3 = calibrationConcentrations[9];
-
-  float a[3][4] = {
-    {1, x1, x1*x1, y1},
-    {1, x2, x2*x2, y2},
-    {1, x3, x3*x3, y3}
-  };
-
-  for (int i = 0; i < 3; i++) {
-    // Normalize the current row
-    float f = a[i][i];
-    for (int j = 0; j < 4; j++) {
-      a[i][j] /= f;
-    }
-
-    // Eliminate the current column
-    for (int k = 0; k < 3; k++) {
-      if (k == i) continue;
-      f = a[k][i];
-      for (int j = 0; j < 4; j++) {
-        a[k][j] -= f * a[i][j];
-      }
-    }
-  }
-
-  float b = a[0][3];
-  float K = a[1][3];
-  float L = a[2][3];
-
-  Serial.println("Полученные коэффициенты:");
-  Serial.print("b = ");
-  Serial.println(b);
-  Serial.print("K = ");
-  Serial.println(K);
-  Serial.print("L = ");
-  Serial.println(L);
 }
