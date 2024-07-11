@@ -18,6 +18,7 @@ float calibrationConcentrations[numPoints];
 
 void setup() {
   Serial.begin(9600);
+  Serial1.begin(9600);
   pinMode(ANALOGPIN, INPUT);
 
   doc["sensor"] = sensorType = getInput("Введите тип датчика:");
@@ -53,6 +54,13 @@ void loop() {
 
   serializeJson(doc, Serial);
   Serial.println((char)0x0A);
+  if (Serial1.available()) {
+
+    int inByte = Serial1.read();
+
+    Serial.write(inByte);
+
+  }
   delay(10000);  // Увеличен до 2000 мс для удобства чтения данных
 }
 
