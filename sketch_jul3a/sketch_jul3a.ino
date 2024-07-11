@@ -21,17 +21,20 @@ void setup() {
   pinMode(ANALOGPIN, INPUT);
 
   doc["sensor"] = sensorType = getInput("Введите тип датчика:");
-  doc["unit"] = unit = getInput("Выберите единицы измерения для датчика:");
+  doc["unit"] = unit = getInput("Выберите тип физической величины:");
 
   EnterPolinom();
 
-  JsonDocument dds;
-  for (int i = 0; i < numPoints; i++) {
-    dds["calibrationVoltages"][i] = random(0,10);
-    dds["calibrationConcentrations"][i] = random(0,10);
-  }
+  // DEBUGING
+  //
+  // JsonDocument ddc;
+  // for (int i = 0; i < 13; i++) {
+  //   ddc["calibrationVoltages"][i] = random(0,10);
+  //   ddc["calibrationConcentrations"][i] = random(0,10);
+  // }
+
   // Заполнение градуировочной характеристики
-  generateCalibrationCurve(dds);
+  generateCalibrationCurve();
 
 
   Serial.println("Настройка завершена.");
@@ -41,8 +44,8 @@ void setup() {
   Serial.println(unit);
 
   // Коллибровка. Получение коэффициентов
-  //calcUnits(calibrationVoltages, calibrationConcentrations);
-  calcUnits(dds);
+  calcUnits(calibrationVoltages, calibrationConcentrations);
+  //calcUnits(ddc);
 }
 
 void loop() {
@@ -83,39 +86,23 @@ void analogExchange() {
   Serial.println(unit);
 }
 
-
-void generateCalibrationCurve() {
+void generateCalibrationCurve(){
   Serial.println("Градуировочная характеристика:");
 
   for (int i = 0; i < numPoints; i++) {
-    calibrationVoltages[i] = i * (5.0 / (numPoints - 1)); // Разделение диапазона 0-5V на равные части
-    calibrationConcentrations[i] = polynomialCalibration(calibrationVoltages[i], a0, a1, a2);
+    doc["calibrationVoltages"][i] = calibrationVoltages[i] = i * (5.0 / (numPoints - 1)); // Разделение диапазона 0-5V на равные части
+    doc["calibrationConcentrations"][i] = calibrationConcentrations[i] = polynomialCalibration(doc["calibrationVoltages"][i], a0, a1, a2);
     Serial.print("Напряжение: ");
-    Serial.print(calibrationVoltages[i]);
+    Serial.print((float)doc["calibrationVoltages"][i]);
     Serial.print(" V -> Концентрация: ");
-    Serial.print(calibrationConcentrations[i]);
-    Serial.print(" ");
-    Serial.println(unit);
-  }
-}
-void generateCalibrationCurve(JsonDocument ddc){
-  Serial.println("Градуировочная характеристика:");
-
-  for (int i = 0; i < numPoints; i++) {
-    ddc["calibrationVoltages"][i] = i * (5.0 / (numPoints - 1)); // Разделение диапазона 0-5V на равные части
-    ddc["calibrationConcentrations"][i] = polynomialCalibration(ddc["calibrationVoltages"][i], a0, a1, a2);
-    Serial.print("Напряжение: ");
-    Serial.print((float)ddc["calibrationVoltages"][i]);
-    Serial.print(" V -> Концентрация: ");
-    Serial.print((float)ddc["calibrationConcentrations"][i]);
+    Serial.print((float)doc["calibrationConcentrations"][i]);
     Serial.print(" ");
     Serial.println(unit);
   }
 }
 
 void calcUnits(JsonDocument dds) {
-  // float Voltages [numPoints];
-  // float Concentrations [numPoints];
+  // float Voltages [numPoints], Concentrations [numPoints];
   // for (int i = 0; i < numPoints; i++) {
   //   Voltages[i] = dds["calibrationVoltages"][i];
   //   Concentrations[i] = dds["calibrationConcentrations"][i];
