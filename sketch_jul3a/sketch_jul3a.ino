@@ -25,8 +25,13 @@ void setup() {
 
   EnterPolinom();
 
+  JsonDocument dds;
+  for (int i = 0; i < numPoints; i++) {
+    dds["calibrationVoltages"][i] = random(0,10);
+    dds["calibrationConcentrations"][i] = random(0,10);
+  }
   // Заполнение градуировочной характеристики
-  generateCalibrationCurve();
+  generateCalibrationCurve(dds);
 
 
   Serial.println("Настройка завершена.");
@@ -36,7 +41,8 @@ void setup() {
   Serial.println(unit);
 
   // Коллибровка. Получение коэффициентов
-  calcUnits(calibrationVoltages, calibrationConcentrations);
+  //calcUnits(calibrationVoltages, calibrationConcentrations);
+  calcUnits(dds);
 }
 
 void loop() {
@@ -91,6 +97,87 @@ void generateCalibrationCurve() {
     Serial.print(" ");
     Serial.println(unit);
   }
+}
+void generateCalibrationCurve(JsonDocument ddc){
+  Serial.println("Градуировочная характеристика:");
+
+  for (int i = 0; i < numPoints; i++) {
+    ddc["calibrationVoltages"][i] = i * (5.0 / (numPoints - 1)); // Разделение диапазона 0-5V на равные части
+    ddc["calibrationConcentrations"][i] = polynomialCalibration(ddc["calibrationVoltages"][i], a0, a1, a2);
+    Serial.print("Напряжение: ");
+    Serial.print((float)ddc["calibrationVoltages"][i]);
+    Serial.print(" V -> Концентрация: ");
+    Serial.print((float)ddc["calibrationConcentrations"][i]);
+    Serial.print(" ");
+    Serial.println(unit);
+  }
+}
+
+void calcUnits(JsonDocument dds) {
+  // float Voltages [numPoints];
+  // float Concentrations [numPoints];
+  // for (int i = 0; i < numPoints; i++) {
+  //   Voltages[i] = dds["calibrationVoltages"][i];
+  //   Concentrations[i] = dds["calibrationConcentrations"][i];
+  // }
+  int sz = dds["calibrationConcentrations"].size()-1;
+  int random_value_1 = random(0,sz);
+  int random_value_2 = random(0,sz);
+  int random_value_3 = random(0,sz); 
+
+  float x1 = dds["calibrationVoltages"][random_value_1];
+  float y1 = dds["calibrationConcentrations"][random_value_1];
+  float x2 = dds["calibrationVoltages"][random_value_2];
+  float y2 = dds["calibrationConcentrations"][random_value_2];
+  float x3 = dds["calibrationVoltages"][random_value_3];
+  float y3 = dds["calibrationConcentrations"][random_value_3];
+
+  // Вычисление коэффициентов A, B и C для квадратичной функции y = Ax^2 + Bx + C
+  float matrix[3][4] = {
+    {x1 * x1, x1, 1, y1},
+    {x2 * x2, x2, 1, y2},
+    {x3 * x3, x3, 1, y3}
+  };
+
+  // Прямой ход метода Гаусса
+  for (int i = 0; i < 3; i++) {
+    // Нормализация строки
+    float factor = matrix[i][i];
+    for (int j = 0; j < 4; j++) {
+      matrix[i][j] /= factor;
+    }
+
+    // Обнуление столбца
+    for (int k = i + 1; k < 3; k++) {
+      factor = matrix[k][i];
+      for (int j = 0; j < 4; j++) {
+        matrix[k][j] -= factor * matrix[i][j];
+      }
+    }
+  }
+
+  // Обратный ход метода Гаусса
+  for (int i = 2; i >= 0; i--) {
+    for (int k = i - 1; k >= 0; k--) {
+      float factor = matrix[k][i];
+      for (int j = 0; j < 4; j++) {
+        matrix[k][j] -= factor * matrix[i][j];
+      }
+    }
+  }
+
+  // Решение системы
+  float A = matrix[0][3];
+  float B = matrix[1][3];
+  float C = matrix[2][3];
+
+  Serial.println("Полученные коэффициенты:");
+  Serial.print("A = ");
+  Serial.println(A);
+  Serial.print("B = ");
+  Serial.println(B);
+  Serial.print("C = ");
+  Serial.println(C);
 }
 
 void calcUnits(float *_calibrationVoltages, float *_calibrationConcentrations) {
