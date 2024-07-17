@@ -5,16 +5,7 @@
 float a0, a1, a2; // Коэффициенты квадратичной калибровочной кривой
 float lastConcentration = 0.0; // Переменная для хранения предыдущего значения концентрации
 
-String sensorType; // Тип датчика
-String unit; // Единицы измерения
-
-
-  //int sensorValue;
-  //float voltage;
-  //float concentration;
-  //float inaccuracy;
-
-JsonDocument doc; // JSON-документ для хранения данных
+StaticJsonDocument<1024> doc; // JSON-документ для хранения данных
 
 // Градуировочная характеристика
 const int numPoints = 10; // Количество точек градуировочной кривой
@@ -23,47 +14,16 @@ void setup() {
   Serial.begin(9600); // Инициализация последовательного порта для монитора
   pinMode(ANALOGPIN, INPUT); // Установка пина ANALOGPIN на вход
 
-  //Получение и сохранение пользовательского ввода для типа датчика и единиц измерения
-  //doc["sensor"] = sensorType = getInput("Введите тип датчика: ");
-  //doc["unit"] = unit = getInput("Выберите тип физической величины: ");
-  
-  //Serial.println(sensorType);
-  //Serial.println(unit);
-
   // Ожидание ввода параметров от внешнего устройства
   waitForParameters();
 
   // Заполнение и вывод градуировочной кривой
   generateCalibrationCurve();
-
-  //Вывод информации о настройках
-  // Serial.println("");
-  // Serial.println("Настройка завершена.");
-  // Serial.print("Тип датчика: ");
-  // Serial.println(sensorType);
-  // Serial.print("Единицы измерения: ");
-  // Serial.println(unit);
-  // Serial.print("Коэффициент a0: ");
-  // Serial.println(a0);
-  // Serial.print("Коэффициент a1: ");
-  // Serial.println(a1);
-  // Serial.print("Коэффициент a2: ");
-  // Serial.println(a2);
 }
 
 void loop() {
-  //serializeJson(doc, Serial); // Отправка JSON-документа на монитор последовательного порта
-  //Serial.println((char)0x0A); // Добавление символа новой строки (LF, ASCII 10)
-  waitForGradcients();
-  
-  // // Вывод данных на монитор последовательного порта
-  // Serial.print("Напряжение: ");
-  // Serial.print(voltage);
-  // Serial.print(" V\t");
-  // Serial.print("Концентрация: ");
-  // Serial.print(concentration);
-  // Serial.print(" ");
-  // Serial.println(unit);
+  waitForGradcients(); // Ожидание и обработка данных от внешнего устройства
+
   delay(500); // Задержка для удобства чтения данных
 }
 
@@ -89,7 +49,6 @@ void analogExchange() {
 
   // Обновление предыдущего значения концентрации
   lastConcentration = concentration;
-
 }
 
 // Генерация градуировочной кривой
@@ -102,6 +61,8 @@ void generateCalibrationCurve() {
     doc["calibrationConcentrations"][i] = polynomialCalibration(doc["calibrationVoltages"][i], a0, a1, a2);
 
     // Вывод данных на монитор последовательного порта
+    String unit = doc["unit"];
+    
     Serial.print("Напряжение: ");
     Serial.print((float)doc["calibrationVoltages"][i]);
     Serial.print(" V -> Концентрация: ");
@@ -165,7 +126,7 @@ void calcUnits(JsonDocument dds) {
   a0 = matrix[2][3];
 
   // Вывод коэффициентов на монитор последовательного порта
-  Serial.println("Полученные коэффициенты:");
+  Serial.println("Новые коэффициенты по полученному JSON-документу: ");
   Serial.print("A = ");
   Serial.println(a2);
   Serial.print("B = ");
@@ -195,9 +156,13 @@ void waitForParameters() {
         a2 = docJson["a2"];
 
         //Получение и сохранение пользовательского ввода для типа датчика и единиц измерения
-        doc["sensor"] = docJson["sensor"];
-        doc["unit"] = docJson["unit"];
-             
+        String sensorType = doc["sensorType"] = docJson["sensorType"];
+        String unit = doc["unit"] = docJson["unit"];
+
+        Serial.print("Получен тип датчика: ");
+        Serial.println(sensorType);
+        Serial.print("Получен тип физической величины: ");
+        Serial.println(unit);
         Serial.println("Коэффициенты получены:");
         Serial.print("a0 = ");
         Serial.println(a0);
@@ -213,13 +178,14 @@ void waitForParameters() {
   }
 }
 
+// Ожидание и получение данных градуировочной кривой от внешнего устройства через последовательный порт
 void waitForGradcients() {
   StaticJsonDocument<256> inJson; // Входящий JSON-документ
-  while(true){
+  while (true) {
     if (Serial.available()) {
       String inputString = Serial.readStringUntil('\n'); // Чтение строки из внешнего последовательного порта
       DeserializationError error = deserializeJson(inJson, inputString);
-      if (inJson.containsKey("calibrationVoltages") & inJson.containsKey("calibrationConcentrations")) {   
+      if (inJson.containsKey("calibrationVoltages") && inJson.containsKey("calibrationConcentrations")) {   
         if (error) {
           // Обработка ошибки десериализации
           Serial.print(F("deserializeJson() failed: "));
